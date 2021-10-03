@@ -2,3 +2,6 @@ discord
 spotipy
 aiohttp
 PyNaCL
+youtube_dl
+discord.py[voice]
+ffmpeg
