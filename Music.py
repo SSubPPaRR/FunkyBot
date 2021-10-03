@@ -12,7 +12,13 @@ except ImportError:
     has_voice = False
 
 SPOTIFY = "^https?:\/\/(open\.spotify\.com\/track)\/(.*)$"
+SPOTIFY_PLAYLIST = "^https?:\/\/(open\.spotify\.com\/playlist)\/(.*)$"
 YOUTUBE_PLAYLIST = "^https?:\/\/(www.youtube.com|youtube.com)\/playlist(.*)$"
+
+spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
+    client_id="32c2e5a0ffb7427fa2e5107e87f839a9",
+    client_secret="0fbdb385fd954a0799691cdb502fda5d"
+))
 
 if has_voice:
     youtube_dl.utils.bug_reports_message = lambda: ''
@@ -76,14 +82,34 @@ async def get_video_data(url, search, bettersearch, loop):
         return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
     else:
         if re.match(SPOTIFY, url[0]):
-            spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
-                client_id="32c2e5a0ffb7427fa2e5107e87f839a9",
-                client_secret="0fbdb385fd954a0799691cdb502fda5d"
-            ))
             meta = spotify.track(url[0])
             temp_url = meta['name'] + " " + meta['artists'][0]['name']
             url = tuple(map(str, temp_url.split(' ')))
-        if re.match(YOUTUBE_PLAYLIST, url[0]):
+        elif re.match(SPOTIFY_PLAYLIST, url[0]):
+            meta = spotify.playlist(url[0])
+            song_name_list = meta['tracks']['items']
+            song_list = []
+            for track in song_name_list:
+                track_name = track['track']['name'] + " " + track['track']['artists'][0]['name']
+                url = tuple(map(str, track_name.split(' ')))
+                url = await ytbettersearch(url)
+                data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
+                source = data["url"]
+                url = "https://www.youtube.com/watch?v=" + data["id"]
+                title = data["title"]
+                description = data["description"]
+                likes = data["like_count"]
+                dislikes = data["dislike_count"]
+                views = data["view_count"]
+                duration = data["duration"]
+                thumbnail = data["thumbnail"]
+                channel = data["uploader"]
+                channel_url = data["uploader_url"]
+                song_list.append(Song(source, url, title, description,
+                                      views, duration, thumbnail, channel, channel_url, False))
+            return song_list
+
+        elif re.match(YOUTUBE_PLAYLIST, url[0]):
             data = await loop.run_in_executor(None, lambda: ydl.extract_info(url[0], download=False))
             return [Song(song['url'], "https://www.youtube.com/watch?v=" + data["id"], song['title'], song['description'], song['view_count'],
                          song['duration'], song['thumbnail'],
@@ -109,7 +135,7 @@ async def get_video_data(url, search, bettersearch, loop):
                 {"format": "bestaudio/best", "restrictfilenames": True, "noplaylist": True, "nocheckcertificate": True,
                  "ignoreerrors": True, "logtostderr": False, "quiet": True, "no_warnings": True,
                  "default_search": "auto", "source_address": "0.0.0.0"})
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url[0], download=False))
             try:
                 data = data["entries"][0]
             except KeyError or TypeError:

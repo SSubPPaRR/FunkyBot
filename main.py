@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 # import DiscordUtils
 import Music
+
 client = commands.Bot(command_prefix="funk_")
 
 # music = DiscordUtils.Music()
@@ -25,7 +26,7 @@ async def play(ctx, *url: str):
         if ctx.voice_client is None:
             print("adding bot to vc")
             await voice_channel.connect()
-        elif ctx.voice_client != voice_channel:
+        elif ctx.voice_client.channel.id != voice_channel.id:
             print("moving bot to vc")
             await ctx.voice_client.move_to(voice_channel)
 
@@ -40,7 +41,12 @@ async def play(ctx, *url: str):
             embed.set_footer(text=f"requested by {ctx.author.display_name}")
             await ctx.send(embed=embed)
         else:
-            song = await player.queue(url, search=True)
+            song = await player.queue(url, bettersearch=True)
+            if len(song) == 1:
+                song = song[0]
+            else:
+                song = Music.Song(None, url, str(len(song)) + " tracks", None, None, None, None, None, None, False)
+
             embed = discord.Embed(color=ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
                                   description=f"[{song.name}]({song.url})")
             embed.set_thumbnail(url=song.thumbnail)
