@@ -14,7 +14,7 @@ async def on_ready():
     print('We have logged in as {0.user}'.format(client))
 
 
-@client.command(name="play")
+@client.command(name="play", aliases=['p'])
 async def play(ctx, *url: str):
     # url = ''.join(url)
     player = music.get_player()
@@ -54,7 +54,7 @@ async def play(ctx, *url: str):
             await ctx.send(embed=embed)
 
 
-@client.command(name="leave", alias='lv')
+@client.command(name="leave", aliases=['lv'])
 async def leave(ctx):
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
     if voice.is_connected():
@@ -63,7 +63,7 @@ async def leave(ctx):
         await ctx.send(embed=standard_embed(ctx, "The bot is not connected to a voice channel."))
 
 
-@client.command(name="pause", alias='ps')
+@client.command(name="pause", aliases=['ps'])
 async def pause(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.pause()
@@ -86,7 +86,7 @@ async def stop(ctx):
     await ctx.send(embed=standard_embed(ctx, "🙉 PLAYBACK STOPPED 🙉"))
 
 
-@client.command(name="queue")
+@client.command(name="queue", aliases=['q'])
 async def queue(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     queue_list = ""
@@ -98,7 +98,7 @@ async def queue(ctx):
     await ctx.send(embed=embed)
 
 
-@client.command(name="now playing", alias='np')
+@client.command(name="now playing", aliases=['np'])
 async def np(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     song = player.now_playing()
@@ -109,21 +109,21 @@ async def np(ctx):
     await ctx.send(embed=embed)
 
 
-@client.command(name="skip", alias='s')
+@client.command(name="skip", aliases=['sk'])
 async def skip(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     data = await player.skip(force=True)
     await ctx.send(embed=standard_embed(ctx, f"🙉 Skipped {data[0].name} 🙉"))
 
 
-@client.command(name="remove", alias='rm')
+@client.command(name="remove", aliases=['rm'])
 async def remove(ctx, index):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.remove_from_queue(int(index))
     await ctx.send(embed=standard_embed(ctx, f"🙉 Removed {song.name} from queue 🙉"))
 
 
-@client.command(name="loop", alias='lp')
+@client.command(name="loop", aliases=['lp'])
 async def loop(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.toggle_song_loop()
