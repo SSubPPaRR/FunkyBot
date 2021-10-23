@@ -10,6 +10,7 @@ try:
 except ImportError:
     has_voice = False
 
+URL_REG = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 SPOTIFY = "^https?:\/\/(open\.spotify\.com\/track)\/(.*)$"
 SPOTIFY_PLAYLIST = "^https?:\/\/(open\.spotify\.com\/playlist)\/(.*)$"
 YOUTUBE_PLAYLIST = "^https?:\/\/(www.youtube.com|youtube.com)\/playlist(.*)$"
@@ -55,8 +56,9 @@ async def ytbettersearch(query):
     return url
 
 
+# or re.match(SPOTIFY, url) or re.match(SPOTIFY_PLAYLIST, url)
 def is_url(url):
-    if re.match(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", url):
+    if re.match(URL_REG, url):
         return True
     else:
         return False
@@ -65,26 +67,9 @@ def is_url(url):
 async def get_video_data(url, search, bettersearch, loop):
     if not has_voice:
         raise RuntimeError("DiscordUtils[voice] install needed in order to use voice")
-    if not search and not bettersearch:
-        data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
-        source = data["url"]
-        url = "https://www.youtube.com/watch?v=" + data["id"]
-        title = data["title"]
-        description = data["description"]
-        likes = data["like_count"]
-        dislikes = data["dislike_count"]
-        views = data["view_count"]
-        duration = data["duration"]
-        thumbnail = data["thumbnail"]
-        channel = data["uploader"]
-        channel_url = data["uploader_url"]
-        return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
-    else:
-        if re.match(SPOTIFY, url[0]):
-            meta = spotify.track(url[0])
-            temp_url = meta['name'] + " " + meta['artists'][0]['name']
-            url = tuple(map(str, temp_url.split(' ')))
-        elif re.match(SPOTIFY_PLAYLIST, url[0]):
+    if is_url(url[0]) and not re.match(SPOTIFY, url[0]):
+        # check if yt playlist
+        if re.match(SPOTIFY_PLAYLIST, url[0]):
             meta = spotify.playlist(url[0])
             song_name_list = meta['tracks']['items']
             song_list = []
@@ -107,51 +92,73 @@ async def get_video_data(url, search, bettersearch, loop):
                 song_list.append(Song(source, url, title, description,
                                       views, duration, thumbnail, channel, channel_url, False))
             return song_list
-
+        # check if spotify playlist
         elif re.match(YOUTUBE_PLAYLIST, url[0]):
             data = await loop.run_in_executor(None, lambda: ydl.extract_info(url[0], download=False))
             return [Song(song['url'], "https://www.youtube.com/watch?v=" + data["id"], song['title'], song['description'], song['view_count'],
                          song['duration'], song['thumbnail'],
                          song['uploader'], song['uploader_url'], False) for song in data['entries']]
-
+        # for other links
+        else:
+            # get track data
+            data = await loop.run_in_executor(None, lambda: ydl.extract_info(url[0], download=False))
+            source = data["url"]
+            url = "https://www.youtube.com/watch?v=" + data["id"]
+            title = data["title"]
+            description = data["description"]
+            likes = data["like_count"]
+            dislikes = data["dislike_count"]
+            views = data["view_count"]
+            duration = data["duration"]
+            thumbnail = data["thumbnail"]
+            channel = data["uploader"]
+            channel_url = data["uploader_url"]
+            return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
+    else:
+        # check if spotify song
+        if re.match(SPOTIFY, url[0]):
+            meta = spotify.track(url[0])
+            temp_url = meta['name'] + " " + meta['artists'][0]['name']
+            url = tuple(map(str, temp_url.split(' ')))
+        #    yt search options
         if bettersearch:
-            url = await ytbettersearch(url)
-            data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
-            source = data["url"]
-            url = "https://www.youtube.com/watch?v=" + data["id"]
-            title = data["title"]
-            description = data["description"]
-            likes = data["like_count"]
-            dislikes = data["dislike_count"]
-            views = data["view_count"]
-            duration = data["duration"]
-            thumbnail = data["thumbnail"]
-            channel = data["uploader"]
-            channel_url = data["uploader_url"]
-            return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
+                url = await ytbettersearch(url)
+                data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
+                source = data["url"]
+                url = "https://www.youtube.com/watch?v=" + data["id"]
+                title = data["title"]
+                description = data["description"]
+                likes = data["like_count"]
+                dislikes = data["dislike_count"]
+                views = data["view_count"]
+                duration = data["duration"]
+                thumbnail = data["thumbnail"]
+                channel = data["uploader"]
+                channel_url = data["uploader_url"]
+                return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
         elif search:
-            ytdl = youtube_dl.YoutubeDL(
-                {"format": "bestaudio/best", "restrictfilenames": True, "noplaylist": True, "nocheckcertificate": True,
-                 "ignoreerrors": True, "logtostderr": False, "quiet": True, "no_warnings": True,
-                 "default_search": "auto", "source_address": "0.0.0.0"})
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url[0], download=False))
-            try:
-                data = data["entries"][0]
-            except KeyError or TypeError:
-                pass
-            del ytdl
-            source = data["url"]
-            url = "https://www.youtube.com/watch?v=" + data["id"]
-            title = data["title"]
-            description = data["description"]
-            likes = data["like_count"]
-            dislikes = data["dislike_count"]
-            views = data["view_count"]
-            duration = data["duration"]
-            thumbnail = data["thumbnail"]
-            channel = data["uploader"]
-            channel_url = data["uploader_url"]
-            return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
+                ytdl = youtube_dl.YoutubeDL(
+                    {"format": "bestaudio/best", "restrictfilenames": True, "noplaylist": True, "nocheckcertificate": True,
+                     "ignoreerrors": True, "logtostderr": False, "quiet": True, "no_warnings": True,
+                     "default_search": "auto", "source_address": "0.0.0.0"})
+                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url[0], download=False))
+                try:
+                    data = data["entries"][0]
+                except KeyError or TypeError:
+                    pass
+                del ytdl
+                source = data["url"]
+                url = "https://www.youtube.com/watch?v=" + data["id"]
+                title = data["title"]
+                description = data["description"]
+                likes = data["like_count"]
+                dislikes = data["dislike_count"]
+                views = data["view_count"]
+                duration = data["duration"]
+                thumbnail = data["thumbnail"]
+                channel = data["uploader"]
+                channel_url = data["uploader_url"]
+                return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
 
 
 def check_queue(ctx, opts, music, after, on_play, loop):
