@@ -40,6 +40,7 @@ async def play(ctx, *url: str):
             embed.set_thumbnail(url=song.thumbnail)
             embed.set_footer(text=f"requested by {ctx.author.display_name}")
             await ctx.send(embed=embed)
+
         else:
             song = await player.queue(url, bettersearch=True)
             if len(song) == 1:
@@ -142,6 +143,7 @@ def standard_embed(ctx, title: str):
     embed = discord.Embed(color=ctx.author.color, title=f"{title}")
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     return embed
+
 
 
 client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')
