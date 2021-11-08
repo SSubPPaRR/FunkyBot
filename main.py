@@ -44,14 +44,13 @@ async def play(ctx, *url: str):
         if not ctx.voice_client.is_playing():
             await player.queue(url, bettersearch=True)
             song = await player.play()
+
             # embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
             #                       description=f"[{song.name}]({song.url})")
             # embed.set_thumbnail(url=song.thumbnail)
             # embed.set_footer(text=f"requested by {ctx.author.display_name}")
             # await ctx.send(embed=embed)
-            if not player.on_play_func:
-                player.on_play(print(f"now playing"))
-                await np_embed(ctx, song)
+            
 
         else:
             song = await player.queue(url, bettersearch=True)
@@ -155,14 +154,6 @@ def standard_embed(ctx, title: str):
     embed = discord.Embed(color=ctx.author.color, title=f"{title}")
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     return embed
-
-
-async def np_embed(ctx, song):
-    embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
-                          description=f"[{song.name}]({song.url})")
-    embed.set_thumbnail(url=song.thumbnail)
-    embed.set_footer(text=f"requested by {ctx.author.display_name}")
-    await ctx.send(embed=embed)
 
 
 client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')
