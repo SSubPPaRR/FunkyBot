@@ -1,4 +1,5 @@
 import discord
+import re
 from discord.ext import commands
 # import DiscordUtils
 import Music
@@ -12,6 +13,16 @@ music = Music.Music()
 @client.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(client))
+
+
+@client.event
+async def on_message(message):
+    
+    if re.match(message.content, "<@!891047888304611348>") is not None:
+        if message.guild.voice_client in client.voice_clients:
+            await message.channel.send("What im just chilling :sunglasses:")
+
+    await client.process_commands(message)
 
 
 @client.command(name="play", aliases=['p'])
@@ -35,11 +46,14 @@ async def play(ctx, *url: str):
         if not ctx.voice_client.is_playing():
             await player.queue(url, bettersearch=True)
             song = await player.play()
-            embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
-                                  description=f"[{song.name}]({song.url})")
-            embed.set_thumbnail(url=song.thumbnail)
-            embed.set_footer(text=f"requested by {ctx.author.display_name}")
-            await ctx.send(embed=embed)
+            # embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
+            #                       description=f"[{song.name}]({song.url})")
+            # embed.set_thumbnail(url=song.thumbnail)
+            # embed.set_footer(text=f"requested by {ctx.author.display_name}")
+            # await ctx.send(embed=embed)
+            if not player.on_play_func:
+                player.on_play(print(f"now playing"))
+                await np_embed(ctx, song)
 
         else:
             song = await player.queue(url, bettersearch=True)
@@ -144,6 +158,13 @@ def standard_embed(ctx, title: str):
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     return embed
 
+
+async def np_embed(ctx, song):
+    embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
+                          description=f"[{song.name}]({song.url})")
+    embed.set_thumbnail(url=song.thumbnail)
+    embed.set_footer(text=f"requested by {ctx.author.display_name}")
+    await ctx.send(embed=embed)
 
 
 client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')
