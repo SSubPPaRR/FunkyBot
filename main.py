@@ -17,8 +17,10 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    
-    if re.match(message.content, "<@!891047888304611348>") is not None:
+    if message.author == client.user:
+        return
+    if "<@!891047888304611348>" in message.content:
+        print(message.content)
         if message.guild.voice_client in client.voice_clients:
             await message.channel.send("What im just chilling :sunglasses:")
 
