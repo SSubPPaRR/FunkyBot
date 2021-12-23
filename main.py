@@ -1,7 +1,5 @@
 import discord
-import re
 from discord.ext import commands
-# import DiscordUtils
 import Music
 
 client = commands.Bot(command_prefix="funk_")
@@ -46,7 +44,7 @@ async def play(ctx, *url: str):
         if not player:
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
         if not ctx.voice_client.is_playing():
-            await player.queue(url, bettersearch=True)
+            await player.queue(url)
             song = await player.play()
             # embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
             #                       description=f"[{song.name}]({song.url})")
@@ -58,7 +56,7 @@ async def play(ctx, *url: str):
                 await np_embed(ctx, song)
 
         else:
-            song = await player.queue(url, bettersearch=True)
+            song = await player.queue(url)
             if len(song) == 1:
                 song = song[0]
             else:
