@@ -1,3 +1,7 @@
+from concurrent.futures import thread
+from re import L
+from threading import Thread
+import threading
 import discord
 from discord.ext import commands
 import Music
@@ -51,8 +55,8 @@ async def play(ctx, *url: str):
             # embed.set_thumbnail(url=song.thumbnail)
             # embed.set_footer(text=f"requested by {ctx.author.display_name}")
             # await ctx.send(embed=embed)
+            await now_playing(player)
             if not player.on_play_func:
-                player.on_play(print(f"now playing"))
                 await np_embed(ctx, song)
 
         else:
@@ -165,6 +169,12 @@ async def np_embed(ctx, song):
     embed.set_thumbnail(url=song.thumbnail)
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     await ctx.send(embed=embed)
+
+
+async def now_playing(player: Music.MusicPlayer):
+    if player.playing_event.is_set:
+        print('SONG INFO HERE')
+        player.playing_event.clear()
 
 
 client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')

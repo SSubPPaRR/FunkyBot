@@ -1,3 +1,5 @@
+import threading
+
 import aiohttp
 import re
 import spotipy
@@ -11,7 +13,6 @@ try:
 except ImportError:
     has_voice = False
     raise ImportError('Failed to import packages [youtube_dl, discord]')
-
 
 URL_REG = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 SPOTIFY = "^https?:\/\/(open\.spotify\.com\/track)\/(.*)$"
@@ -204,6 +205,7 @@ class MusicPlayer(object):
         self.voice = ctx.voice_client
         self.loop = ctx.bot.loop
         self.music = music
+        self.playing_event = threading.Event
         if self.ctx.guild.id not in self.music.queue.keys():
             self.music.queue[self.ctx.guild.id] = []
         self.after_func = check_queue
@@ -280,7 +282,7 @@ class MusicPlayer(object):
                 new = self.music.queue[self.ctx.guild.id][0]
                 if self.on_skip_func:
                     await self.on_skip_func(self.ctx, old, new)
-                return (old, new)
+                return old, new
             except IndexError:
                 if self.on_skip_func:
                     await self.on_skip_func(self.ctx, old)
