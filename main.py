@@ -4,12 +4,12 @@ from threading import Thread
 import threading
 import discord
 from discord.ext import commands
-import Music
+import MusicCog
 
 client = commands.Bot(command_prefix="funk_")
 
 # music = DiscordUtils.Music()
-music = Music.Music()
+music = MusicCog.Music()
 
 
 @client.event
@@ -31,8 +31,7 @@ async def on_message(message):
 
 @client.command(name="play", aliases=['p'])
 async def play(ctx, *url: str):
-    # url = ''.join(url)
-    player = music.get_player()
+    player = music.get_player(guild_id=ctx.guild.id)
 
     if ctx.author.voice is None:
         await ctx.send("you are not in a voice channel")
@@ -47,30 +46,13 @@ async def play(ctx, *url: str):
 
         if not player:
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
+            await player.queue_song(url)
+            await player.play()
         if not ctx.voice_client.is_playing():
-            await player.queue(url)
-            song = await player.play()
-            # embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
-            #                       description=f"[{song.name}]({song.url})")
-            # embed.set_thumbnail(url=song.thumbnail)
-            # embed.set_footer(text=f"requested by {ctx.author.display_name}")
-            # await ctx.send(embed=embed)
-            await now_playing(player)
-            if not player.on_play_func:
-                await np_embed(ctx, song)
-
+            await player.queue_song(url)
         else:
-            song = await player.queue(url)
-            if len(song) == 1:
-                song = song[0]
-            else:
-                song = Music.Song(None, url, str(len(song)) + " tracks", None, None, None, None, None, None, False)
-
-            embed = discord.Embed(color=ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
-                                  description=f"[{song.name}]({song.url})")
-            embed.set_thumbnail(url=song.thumbnail)
-            embed.set_footer(text=f"requested by {ctx.author.display_name}")
-            await ctx.send(embed=embed)
+            await player.queue_song(url)
+            await player.play()
 
 
 @client.command(name="leave", aliases=['lv'])
@@ -120,12 +102,7 @@ async def queue(ctx):
 @client.command(name="now playing", aliases=['np'])
 async def np(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
-    song = player.now_playing()
-    embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
-                          description=f"[{song.name}]({song.url})")
-    embed.set_thumbnail(url=song.thumbnail)
-    embed.set_footer(text=f"requested by {ctx.author.display_name}")
-    await ctx.send(embed=embed)
+    await player.now_playing()
 
 
 @client.command(name="skip", aliases=['sk'])
@@ -169,12 +146,6 @@ async def np_embed(ctx, song):
     embed.set_thumbnail(url=song.thumbnail)
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     await ctx.send(embed=embed)
-
-
-async def now_playing(player: Music.MusicPlayer):
-    if player.playing_event.is_set:
-        print('SONG INFO HERE')
-        player.playing_event.clear()
 
 
 client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')

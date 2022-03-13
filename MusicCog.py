@@ -164,7 +164,7 @@ async def get_video_data(url, loop):
         return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
 
 
-class Music(commands.Cog):
+class Music(object):
     def __init__(self):
         self.players = {}
 
@@ -181,13 +181,15 @@ class Music(commands.Cog):
     def get_player(self, **kwargs):
         guild = kwargs.get("guild_id")
         channel = kwargs.get("channel_id")
-        for player in self.players:
-            if guild and channel and player.ctx.guild.id == guild and player.voice.channel.id == channel:
-                return player
-            elif not guild and channel and player.voice.channel.id == channel:
-                return player
-            elif not channel and guild and player.ctx.guild.id == guild:
-                return player
+        players = self.players
+        for player_id in self.players:
+            if guild and channel and players[player_id].ctx.guild.id == guild and \
+                    players[player_id].voice.channel.id == channel:
+                return players[player_id]
+            elif not guild and channel and players[player_id].voice.channel.id == channel:
+                return players[player_id]
+            elif not channel and guild and players[player_id].ctx.guild.id == guild:
+                return players[player_id]
         else:
             return None
 
@@ -212,17 +214,26 @@ class MusicPlayer(object):
     async def play(self):
         source = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(self.queue.current_track().source, **self.ffmpeg_opts))
-        self.voice.play(source,
-                        after=lambda error: self.do_after())
+        self.voice.play(source, after=await self.do_after())
+        if not self.voice.is_playing():
+            await self.now_playing()
 
     async def do_after(self):
-        source = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(self.queue.next_track().source, **self.ffmpeg_opts))
-        self.voice.play(source, after=lambda error: self.do_after())
+        try:
+            if len(self.queue.tracks) > 1:
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(self.queue.next_track().source, **self.ffmpeg_opts))
+                self.voice.play(source, after=await self.do_after())
+            if not self.voice.is_playing():
+                await self.now_playing()
+        except IndexError:
+            pass
 
     async def queue_song(self, query: str):
         songs = await get_video_data(query, self.loop)
         self.queue.add_tracks(songs)
+        if self.voice.is_playing() or len(self.queue.tracks) == 0:
+            await self.on_queue_message(songs)
 
     async def stop(self):
         self.voice.stop()
@@ -242,10 +253,31 @@ class MusicPlayer(object):
         if vol < 0 or vol > 100:
             raise InvalidVolumeValue
         else:
-            self.voice.source.volume = (vol/100)
+            self.voice.source.volume = (vol / 100)
 
     async def delete(self):
         self.music.players.pop(self.ctx.guild.id)
+
+    async def now_playing(self):
+        song = self.queue.current_track()
+        embed = discord.Embed(color=self.ctx.author.color, title="🪘 NOW PLAYING 🪘",
+                              description=f"[{song.name}]({song.url})")
+        embed.set_thumbnail(url=song.thumbnail)
+        embed.set_footer(text=f"requested by {self.ctx.author.display_name}")
+        await self.ctx.send(embed=embed)
+
+    async def on_queue_message(self, songs):
+        if len(songs) == 1:
+            song = songs[0]
+        else:
+            song = Song(None, self.queue.current_track(), str(len(self.queue.tracks)) + \
+                        " tracks", None, None, None, None, None, None, False)
+
+        embed = discord.Embed(color=self.ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
+                              description=f"[{song.name}]({song.url})")
+        embed.set_thumbnail(url=song.thumbnail)
+        embed.set_footer(text=f"requested by {self.ctx.author.display_name}")
+        await self.ctx.send(embed=embed)
 
 
 class Song(object):
