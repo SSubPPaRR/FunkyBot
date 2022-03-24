@@ -1,9 +1,9 @@
-import discord
-import youtube_dl
-from discord.ext import commands
-import aiohttp
 import re
+import aiohttp
+import discord
 import spotipy
+import youtube_dl
+import asyncio
 from spotipy.oauth2 import SpotifyClientCredentials
 
 
@@ -211,28 +211,36 @@ class MusicPlayer(object):
         else:
             self.ffmpeg_opts = {"options": "-vn", "before_options": "-nostdin"}
 
-    async def play(self):
-        source = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(self.queue.current_track().source, **self.ffmpeg_opts))
-        self.voice.play(source, after=await self.do_after())
-        if not self.voice.is_playing():
-            await self.now_playing()
-
-    async def do_after(self):
+    async def play(self, up_next='', pos=None):
         try:
-            if len(self.queue.tracks) > 1:
-                source = discord.PCMVolumeTransformer(
-                    discord.FFmpegPCMAudio(self.queue.next_track().source, **self.ffmpeg_opts))
-                self.voice.play(source, after=await self.do_after())
-            if not self.voice.is_playing():
-                await self.now_playing()
-        except IndexError:
+            track_src = None
+            if up_next == '+':
+                track_src = self.queue.next_track()
+            elif up_next == '-':
+                track_src = self.queue.previous_track()
+            elif up_next == '*':
+                track_src = self.queue.goto(pos)
+            else:
+                track_src = self.queue.current_track()
+
+            source = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(track_src.source, **self.ffmpeg_opts))
+            self.voice.play(source, after=lambda error: self.do_after())
+            await self.now_playing()
+        except discord.errors.ClientException:
             pass
+
+    def do_after(self):
+        try:
+            fut = asyncio.run_coroutine_threadsafe(self.play(up_next='+'), self.loop)
+            fut.result()
+        except IndexError:
+            print('End of queue')
 
     async def queue_song(self, query: str):
         songs = await get_video_data(query, self.loop)
         self.queue.add_tracks(songs)
-        if self.voice.is_playing() or len(self.queue.tracks) == 0:
+        if self.voice.is_playing() or len(self.queue.tracks) > 1:
             await self.on_queue_message(songs)
 
     async def stop(self):
@@ -245,6 +253,17 @@ class MusicPlayer(object):
 
     async def pause(self):
         self.voice.pause()
+
+    async def skip(self):
+        try:
+            if self.voice.is_playing:
+                self.voice.stop()
+                await self.play(up_next='+')
+        except IndexError:
+            embed = discord.Embed(color=self.ctx.author.color, title="🪘 Problem occurred 🪘",
+                                  description=f"Cant skip, end of queue")
+            embed.set_footer(text=f"{self.ctx.author.display_name}")
+            await self.ctx.send(embed=embed)
 
     async def set_looping(self, state: bool):
         self.queue.looping = state
@@ -270,7 +289,7 @@ class MusicPlayer(object):
         if len(songs) == 1:
             song = songs[0]
         else:
-            song = Song(None, self.queue.current_track(), str(len(self.queue.tracks)) + \
+            song = Song(None, self.queue.current_track(), str(len(self.queue.tracks)) +
                         " tracks", None, None, None, None, None, None, False)
 
         embed = discord.Embed(color=self.ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",

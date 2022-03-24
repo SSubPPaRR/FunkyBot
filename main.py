@@ -48,7 +48,7 @@ async def play(ctx, *url: str):
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
             await player.queue_song(url)
             await player.play()
-        if not ctx.voice_client.is_playing():
+        elif not ctx.voice_client.is_playing():
             await player.queue_song(url)
         else:
             await player.queue_song(url)
@@ -92,7 +92,7 @@ async def queue(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     queue_list = ""
     pos = 0
-    for song in player.current_queue():
+    for song in player.queue.tracks:
         queue_list += f"{pos})[{song.name}]({song.url})\n"
         pos += 1
     embed = discord.Embed(color=ctx.author.color, title="🌳 QUEUE 🌳", description=queue_list)
