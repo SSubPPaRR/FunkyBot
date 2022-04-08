@@ -108,7 +108,7 @@ async def np(ctx):
 @client.command(name="skip", aliases=['sk'])
 async def skip(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
-    data = await player.skip(force=True)
+    data = await player.skip()
     await ctx.send(embed=standard_embed(ctx, f"🙉 Skipped {data[0].name} 🙉"))
 
 

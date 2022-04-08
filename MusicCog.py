@@ -93,31 +93,35 @@ def check_queue(ctx, opts, music, after, on_play, loop):
 
 async def get_video_data(url, loop):
     if is_url(url[0]) and not re.match(SPOTIFY, url[0]):
-        # check if yt playlist
+        # check if spotify playlist
         if re.match(SPOTIFY_PLAYLIST, url[0]):
             meta = spotify.playlist(url[0])
             song_name_list = meta['tracks']['items']
             song_list = []
             for track in song_name_list:
-                track_name = track['track']['name'] + " " + track['track']['artists'][0]['name']
-                url = tuple(map(str, track_name.split(' ')))
-                url = await search(url)
-                data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
-                source = data["url"]
-                url = "https://www.youtube.com/watch?v=" + data["id"]
-                title = data["title"]
-                description = data["description"]
-                likes = data["like_count"]
-                # dislikes = data["dislike_count"]
-                views = data["view_count"]
-                duration = data["duration"]
-                thumbnail = data["thumbnail"]
-                channel = data["uploader"]
-                channel_url = data["uploader_url"]
-                song_list.append(Song(source, url, title, description,
-                                      views, duration, thumbnail, channel, channel_url, False))
+                try:
+                    track_name = track['track']['name'] + " " + track['track']['artists'][0]['name']
+                    url = tuple(map(str, track_name.split(' ')))
+                    url = await search(url)
+                    data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
+                    source = data["url"]
+                    url = "https://www.youtube.com/watch?v=" + data["id"]
+                    title = data["title"]
+                    description = data["description"]
+                    likes = data["like_count"]
+                    # dislikes = data["dislike_count"]
+                    views = data["view_count"]
+                    duration = data["duration"]
+                    thumbnail = data["thumbnail"]
+                    channel = data["uploader"]
+                    channel_url = data["uploader_url"]
+                    song_list.append(Song(source, url, title, description,
+                                          views, duration, thumbnail, channel, channel_url, False))
+                except Exception as e:
+                    print(f'Error occured at track {track["track"]["name"]}')
+                    continue
             return song_list
-        # check if spotify playlist
+        # check if yt playlist
         elif re.match(YOUTUBE_PLAYLIST, url[0]):
             data = await loop.run_in_executor(None, lambda: ydl.extract_info(url[0], download=False))
             return [
@@ -241,7 +245,7 @@ class MusicPlayer(object):
         songs = await get_video_data(query, self.loop)
         self.queue.add_tracks(songs)
         if self.voice.is_playing() or len(self.queue.tracks) > 1:
-            await self.on_queue_message(songs)
+            await self.on_queue_message(songs, query)
 
     async def stop(self):
         self.voice.stop()
@@ -285,12 +289,12 @@ class MusicPlayer(object):
         embed.set_footer(text=f"requested by {self.ctx.author.display_name}")
         await self.ctx.send(embed=embed)
 
-    async def on_queue_message(self, songs):
+    async def on_queue_message(self, songs, query):
         if len(songs) == 1:
             song = songs[0]
         else:
-            song = Song(None, self.queue.current_track(), str(len(self.queue.tracks)) +
-                        " tracks", None, None, None, None, None, None, False)
+            song = Song(None, query, str(len(self.queue.tracks)) +
+                        " tracks", None, None, None, songs[0].thumbnail, None, None, False)
 
         embed = discord.Embed(color=self.ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
                               description=f"[{song.name}]({song.url})")
