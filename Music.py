@@ -12,7 +12,6 @@ except ImportError:
     has_voice = False
     raise ImportError('Failed to import packages [youtube_dl, discord]')
 
-
 URL_REG = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 SPOTIFY = "^https?:\/\/(open\.spotify\.com\/track)\/(.*)$"
 SPOTIFY_PLAYLIST = "^https?:\/\/(open\.spotify\.com\/playlist)\/(.*)$"
@@ -349,7 +348,7 @@ class MusicPlayer(object):
             raise NotPlaying("Cannot loop because nothing is being played")
         if self.on_volume_change_func:
             await self.on_volume_change_func(self.ctx, song, vol)
-        return (song, vol)
+        return song, vol
 
     async def remove_from_queue(self, index):
         if index == 0:
