@@ -84,7 +84,7 @@ async def get_video_data(url, loop):
                 url = "https://www.youtube.com/watch?v=" + data["id"]
                 title = data["title"]
                 description = data["description"]
-                likes = data["like_count"]
+                # likes = data["like_count"]
                 # dislikes = data["dislike_count"]
                 views = data["view_count"]
                 duration = data["duration"]
@@ -110,7 +110,7 @@ async def get_video_data(url, loop):
             url = "https://www.youtube.com/watch?v=" + data["id"]
             title = data["title"]
             description = data["description"]
-            likes = data["like_count"]
+            # likes = data["like_count"]
             # dislikes = data["dislike_count"]
             views = data["view_count"]
             duration = data["duration"]
@@ -158,13 +158,13 @@ def check_queue(ctx, opts, music, after, on_play, loop):
             ctx.voice_client.play(source, after=lambda error: after(ctx, opts, music, after, on_play, loop))
             song = music.queue[ctx.guild.id][0]
             if on_play:
-                loop.create_task(on_play(ctx, song))
+                loop.create_task(on_play(ctx))
     else:
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(music.queue[ctx.guild.id][0].source, **opts))
         ctx.voice_client.play(source, after=lambda error: after(ctx, opts, music, after, on_play, loop))
         song = music.queue[ctx.guild.id][0]
         if on_play:
-            loop.create_task(on_play(ctx, song))
+            loop.create_task(on_play(ctx))
 
 
 class Music(object):
@@ -206,7 +206,9 @@ class MusicPlayer(object):
         if self.ctx.guild.id not in self.music.queue.keys():
             self.music.queue[self.ctx.guild.id] = []
         self.after_func = check_queue
-        self.on_play_func = self.on_queue_func = self.on_skip_func = self.on_stop_func = self.on_pause_func = self.on_resume_func = self.on_loop_toggle_func = self.on_volume_change_func = self.on_remove_from_queue_func = None
+        self.on_play_func = None
+        self.on_queue_func = self.on_skip_func = self.on_stop_func = self.on_pause_func = self.on_resume_func = self.on_loop_toggle_func = self.on_volume_change_func = self.on_remove_from_queue_func = None
+
         ffmpeg_error = kwargs.get("ffmpeg_error_betterfix", kwargs.get("ffmpeg_error_fix"))
         if ffmpeg_error and "ffmpeg_error_betterfix" in kwargs.keys():
             self.ffmpeg_opts = {"options": "-vn -loglevel quiet -hide_banner -nostats",
@@ -252,7 +254,7 @@ class MusicPlayer(object):
         songs = await get_video_data(url, self.loop)
         self.music.queue[self.ctx.guild.id].extend(songs)
         if self.on_queue_func:
-            await self.on_queue_func(self.ctx, songs)
+            self.loop.create_task(self.on_queue_func(self.ctx))
         return songs
 
     async def play(self):
@@ -263,12 +265,12 @@ class MusicPlayer(object):
                                                             self.on_play_func, self.loop))
         song = self.music.queue[self.ctx.guild.id][0]
         if self.on_play_func:
-            await self.on_play_func(self.ctx, song)
+            self.loop.create_task(self.on_play_func(self.ctx))
         return song
 
     async def skip(self, force=False):
         if len(self.music.queue[self.ctx.guild.id]) == 0:
-            raise NotPlaying("Cannot loop because nothing is being played")
+            raise NotPlaying("Cannot skip because nothing is being played")
         elif not len(self.music.queue[self.ctx.guild.id]) > 1 and not force:
             raise EmptyQueue("Cannot skip because queue is empty")
         else:
@@ -279,7 +281,7 @@ class MusicPlayer(object):
                 new = self.music.queue[self.ctx.guild.id][0]
                 if self.on_skip_func:
                     await self.on_skip_func(self.ctx, old, new)
-                return (old, new)
+                return old, new
             except IndexError:
                 if self.on_skip_func:
                     await self.on_skip_func(self.ctx, old)
@@ -291,7 +293,7 @@ class MusicPlayer(object):
             self.voice.stop()
             self.music.players.remove(self)
         except:
-            raise NotPlaying("Cannot loop because nothing is being played")
+            raise NotPlaying("Cannot stop because nothing is being played")
         if self.on_stop_func:
             await self.on_stop_func(self.ctx)
 

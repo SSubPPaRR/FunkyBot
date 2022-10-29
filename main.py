@@ -6,7 +6,6 @@ intent = discord.Intents().default()
 intent.message_content = True
 client = commands.Bot(command_prefix="funk_", intents=intent)
 
-# music = DiscordUtils.Music()
 music = Music.Music()
 
 
@@ -45,30 +44,32 @@ async def play(ctx, *url: str):
 
         if not player:
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
-        if not ctx.voice_client.is_playing():
-            await player.queue(url)
-            song = await player.play()
-            # embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
-            #                       description=f"[{song.name}]({song.url})")
-            # embed.set_thumbnail(url=song.thumbnail)
-            # embed.set_footer(text=f"requested by {ctx.author.display_name}")
-            # await ctx.send(embed=embed)
-            if not player.on_play_func:
-                player.on_play(print(f"now playing"))
-                await np_embed(ctx, song)
+            player.on_play_func = np
 
-        else:
-            song = await player.queue(url)
-            if len(song) == 1:
-                song = song[0]
+        if not len(url) == 0:
+            if not ctx.voice_client.is_playing():
+                await player.queue(url)
+                song = await player.play()
+
+                if not player.on_play_func:
+                    player.on_play(print(f"now playing"))
+                    await np_embed(ctx, song)
+
             else:
-                song = Music.Song(None, url, str(len(song)) + " tracks", None, None, None, None, None, None, False)
+                song = await player.queue(url)
+                if len(song) == 1:
+                    song = song[0]
+                else:
+                    song = Music.Song(None, url, str(len(song)) + " tracks", None, None, None, None, None, None, False)
 
-            embed = discord.Embed(color=ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
-                                  description=f"[{song.name}]({song.url})")
-            embed.set_thumbnail(url=song.thumbnail)
-            embed.set_footer(text=f"requested by {ctx.author.display_name}")
-            await ctx.send(embed=embed)
+                embed = discord.Embed(color=ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
+                                      description=f"[{song.name}]({song.url})")
+                embed.set_thumbnail(url=song.thumbnail)
+                embed.set_footer(text=f"requested by {ctx.author.display_name}")
+                await ctx.send(embed=embed)
+        else:
+            # add message here
+            pass
 
 
 @client.command(name="leave", aliases=['lv'])
