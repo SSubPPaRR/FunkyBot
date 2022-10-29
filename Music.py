@@ -132,7 +132,7 @@ async def get_video_data(url, loop):
         url = "https://www.youtube.com/watch?v=" + data["id"]
         title = data["title"]
         description = data["description"]
-        likes = data["like_count"]
+        # likes = data["like_count"]
         # dislikes = data["dislike_count"]
         views = data["view_count"]
         duration = data["duration"]

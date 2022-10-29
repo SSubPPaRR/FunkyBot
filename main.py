@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 import Music
 
-client = commands.Bot(command_prefix="funk_")
+intent = discord.Intents().default()
+intent.message_content = True
+client = commands.Bot(command_prefix="funk_", intents=intent)
 
 # music = DiscordUtils.Music()
 music = Music.Music()
@@ -73,7 +75,7 @@ async def play(ctx, *url: str):
 async def leave(ctx):
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
     if voice.is_connected():
-        await voice.disconnect()
+        await voice.disconnect(force=True)
     else:
         await ctx.send(embed=standard_embed(ctx, "The bot is not connected to a voice channel."))
 
