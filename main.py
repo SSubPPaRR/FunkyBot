@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 import Music
 
-intent = discord.Intents().default()
-intent.message_content = True
+intent = discord.Intents().all()
+
 client = commands.Bot(command_prefix="funk_", intents=intent)
 
 music = Music.Music()
