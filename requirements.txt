@@ -5,4 +5,4 @@ PyNaCL
 youtube_dl
 discord.py[voice]
 ffmpeg
-python-3.10.8
+
