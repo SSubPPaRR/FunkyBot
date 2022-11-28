@@ -90,7 +90,8 @@ async def pause(ctx):
     await ctx.send(embed=embed)
 
 
-@client.command(name="resume")async def resume(ctx):
+@client.command(name="resume")
+async def resume(ctx):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.resume()
     await ctx.send(embed=standard_embed(ctx, f"▶ Resumed {song.name}"))
