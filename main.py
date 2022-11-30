@@ -1,3 +1,4 @@
+import os
 import discord
 from discord.ext import commands
 import Music
@@ -46,13 +47,13 @@ async def play(ctx, *url: str):
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
             player.on_play_func = np
 
-        if not len(url) == 0:
+        if len(url) != 0:
             if not ctx.voice_client.is_playing():
                 await player.queue(url)
                 song = await player.play()
 
                 if not player.on_play_func:
-                    player.on_play(print(f"now playing"))
+                    player.on_play(print("now playing"))
                     await np_embed(ctx, song)
 
             else:
@@ -170,4 +171,5 @@ async def np_embed(ctx, song):
     await ctx.send(embed=embed)
 
 
-client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')
+
+client.run(os.getenv('FUNKYKEY'))
