@@ -1,3 +1,4 @@
+import os
 import discord
 from discord.ext import commands
 import Music
@@ -170,4 +171,4 @@ async def np_embed(ctx, song):
     await ctx.send(embed=embed)
 
 
-client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')
+client.run(os.getenv('FUNKYKEY'))
