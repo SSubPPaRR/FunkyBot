@@ -5,12 +5,15 @@ import threading
 import discord
 from discord.ext import commands
 import MusicCog
+import os
+from dotenv import load_dotenv 
 
-client = commands.Bot(command_prefix="funk_")
+myIntents= discord.Intents.default()
+myIntents.message_content = True;
 
-# music = DiscordUtils.Music()
+client = commands.Bot(command_prefix="funk_",intents=myIntents)
+
 music = MusicCog.Music()
-
 
 @client.event
 async def on_ready():
@@ -147,5 +150,6 @@ async def np_embed(ctx, song):
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     await ctx.send(embed=embed)
 
-
-client.run('ODkxMDQ3ODg4MzA0NjExMzQ4.YU4rAw.DUTtrBnH-TfplkN7au-PPlgMLI0')
+load_dotenv() 
+TOKEN = os.getenv('BOT_KEY')
+client.run(token=TOKEN)

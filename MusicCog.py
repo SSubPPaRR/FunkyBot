@@ -151,6 +151,7 @@ async def get_video_data(url, loop):
             meta = spotify.track(url[0])
             temp_url = meta['name'] + " " + meta['artists'][0]['name']
             url = tuple(map(str, temp_url.split(' ')))
+            
         #    yt search options
         url = await search(url)
         data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=False))
@@ -321,24 +322,24 @@ class Song(object):
 class Queue(object):
     def __init__(self, **kwargs):
         self.tracks = []
-        self.position = 0
+        self.pointer = 0
         self.looping = False
 
     def current_track(self):
-        return self.tracks[self.position]
+        return self.tracks[self.pointer]
 
     def next_track(self):
-        if self.looping and self.position == len(self.tracks):
-            self.position = 0
+        if self.looping and self.pointer == len(self.tracks) - 1:
+            self.pointer = 0
         else:
-            self.position += 1
+            self.pointer += 1
         return self.current_track()
 
     def previous_track(self):
-        if self.looping and self.position == 0:
-            self.position = len(self.tracks) - 1
+        if self.looping and self.pointer == 0:
+            self.pointer = len(self.tracks) - 1
         else:
-            self.position -= 1
+            self.pointer -= 1
         return self.current_track()
 
     def add_track(self, song: Song):
@@ -351,7 +352,7 @@ class Queue(object):
         self.tracks.pop(index)
 
     def goto(self, index: int):
-        self.position = index
+        self.pointer = index
         return self.current_track()
 
     def clear(self):
