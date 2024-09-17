@@ -2,9 +2,12 @@ import re
 import aiohttp
 import discord
 import spotipy
-import youtube_dl
 import asyncio
+
+from yt_dlp import YoutubeDL
 from spotipy.oauth2 import SpotifyClientCredentials
+
+from notifHub import NotificationHub
 
 
 class EmptyQueue(Exception):
@@ -37,8 +40,7 @@ spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
     client_secret="0fbdb385fd954a0799691cdb502fda5d"
 ))
 
-youtube_dl.utils.bug_reports_message = lambda: ''
-ydl = youtube_dl.YoutubeDL(
+ydl = YoutubeDL(
     {"format": "bestaudio/best", "restrictfilenames": True, "noplaylist": False, "nocheckcertificate": True,
      "ignoreerrors": True, "logtostderr": False, "quiet": True, "no_warnings": True, "source_address": "0.0.0.0"})
 
@@ -169,43 +171,15 @@ async def get_video_data(url, loop):
         return [Song(source, url, title, description, views, duration, thumbnail, channel, channel_url, False)]
 
 
-class Music(object):
-    def __init__(self):
-        self.players = {}
-
-    def create_player(self, ctx, **kwargs):
-        if not ctx.voice_client:
-            raise NotConnectedToVoice("Cannot create the player because bot is not connected to voice")
-        player = MusicPlayer(ctx, self, **kwargs)
-        if ctx.guild.id in self.players.keys():
-            raise PlayerAlreadyExist
-        else:
-            self.players[ctx.guild.id] = player
-            return player
-
-    def get_player(self, **kwargs):
-        guild = kwargs.get("guild_id")
-        channel = kwargs.get("channel_id")
-        players = self.players
-        for player_id in self.players:
-            if guild and channel and players[player_id].ctx.guild.id == guild and \
-                    players[player_id].voice.channel.id == channel:
-                return players[player_id]
-            elif not guild and channel and players[player_id].voice.channel.id == channel:
-                return players[player_id]
-            elif not channel and guild and players[player_id].ctx.guild.id == guild:
-                return players[player_id]
-        else:
-            return None
-
 
 class MusicPlayer(object):
-    def __init__(self, ctx, music, **kwargs):
+    def __init__(self, ctx, music, hub:NotificationHub, **kwargs):
         self.ctx = ctx
         self.voice = ctx.voice_client
         self.loop = ctx.bot.loop
         self.music = music
         self.queue = Queue()
+        self.notif_hub = hub 
         ffmpeg_error = kwargs.get("ffmpeg_error_betterfix", kwargs.get("ffmpeg_error_fix"))
         if ffmpeg_error and "ffmpeg_error_betterfix" in kwargs.keys():
             self.ffmpeg_opts = {"options": "-vn -loglevel quiet -hide_banner -nostats",
@@ -245,7 +219,8 @@ class MusicPlayer(object):
     async def queue_song(self, query: str):
         songs = await get_video_data(query, self.loop)
         self.queue.add_tracks(songs)
-        if self.voice.is_playing() or len(self.queue.tracks) > 1:
+        # or len(self.queue.tracks) > 1
+        if self.voice.is_playing(): 
             await self.on_queue_message(songs, query)
 
     async def stop(self):
@@ -265,10 +240,8 @@ class MusicPlayer(object):
                 self.voice.stop()
                 await self.play(up_next='+')
         except IndexError:
-            embed = discord.Embed(color=self.ctx.author.color, title="🪘 Problem occurred 🪘",
-                                  description=f"Cant skip, end of queue")
-            embed.set_footer(text=f"{self.ctx.author.display_name}")
-            await self.ctx.send(embed=embed)
+            await self.notif_hub.send_notif('error', title="🪘 Problem occurred 🪘", description=f"Cant skip, end of queue")
+                                  
 
     async def set_looping(self, state: bool):
         self.queue.looping = state
@@ -284,12 +257,8 @@ class MusicPlayer(object):
 
     async def now_playing(self):
         song = self.queue.current_track()
-        embed = discord.Embed(color=self.ctx.author.color, title="🪘 NOW PLAYING 🪘",
-                              description=f"[{song.name}]({song.url})")
-        embed.set_thumbnail(url=song.thumbnail)
-        embed.set_footer(text=f"requested by {self.ctx.author.display_name}")
-        await self.ctx.send(embed=embed)
-
+        await self.notif_hub.send_notif(event_name='play',title="🪘 NOW PLAYING 🪘", song=song)
+        
     async def on_queue_message(self, songs, query):
         if len(songs) == 1:
             song = songs[0]
@@ -297,11 +266,12 @@ class MusicPlayer(object):
             song = Song(None, query, str(len(self.queue.tracks)) +
                         " tracks", None, None, None, songs[0].thumbnail, None, None, False)
 
-        embed = discord.Embed(color=self.ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
-                              description=f"[{song.name}]({song.url})")
-        embed.set_thumbnail(url=song.thumbnail)
-        embed.set_footer(text=f"requested by {self.ctx.author.display_name}")
-        await self.ctx.send(embed=embed)
+        # embed = discord.Embed(color=self.ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
+        #                       description=f"[{song.name}]({song.url})")
+        # embed.set_thumbnail(url=song.thumbnail)
+        # embed.set_footer(text=f"requested by {self.ctx.author.display_name}")
+        # await self.ctx.send(embed=embed)
+        await self.notif_hub.send_notif('queue',title="🐒 ADDED TO QUEUE 🐒" ,song=song)
 
 
 class Song(object):
@@ -357,3 +327,34 @@ class Queue(object):
 
     def clear(self):
         self.tracks.clear()
+
+
+class Music(object):
+    def __init__(self):
+        self.players = {}
+
+    def create_player(self, ctx, **kwargs):
+        if not ctx.voice_client:
+            raise NotConnectedToVoice("Cannot create the player because bot is not connected to voice")
+        if ctx.guild.id in self.players.keys():
+            raise PlayerAlreadyExist
+        else:
+            hub = NotificationHub(ctx=ctx)
+            player = MusicPlayer(ctx, self, hub, **kwargs)
+            self.players[ctx.guild.id] = player
+            return player
+
+    def get_player(self, **kwargs) -> MusicPlayer|None:
+        guild = kwargs.get("guild_id")
+        channel = kwargs.get("channel_id")
+        players = self.players
+        for player_id in self.players:
+            if guild and channel and players[player_id].ctx.guild.id == guild and \
+                    players[player_id].voice.channel.id == channel:
+                return players[player_id]
+            elif not guild and channel and players[player_id].voice.channel.id == channel:
+                return players[player_id]
+            elif not channel and guild and players[player_id].ctx.guild.id == guild:
+                return players[player_id]
+        else:
+            return None

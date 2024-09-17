@@ -4,16 +4,18 @@ from threading import Thread
 import threading
 import discord
 from discord.ext import commands
-import MusicCog
+from MusicCog import Music, MusicPlayer
 import os
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
+
+import discord.ext 
 
 myIntents= discord.Intents.default()
 myIntents.message_content = True;
 
 client = commands.Bot(command_prefix="funk_",intents=myIntents)
 
-music = MusicCog.Music()
+music = Music()
 
 @client.event
 async def on_ready():
@@ -33,9 +35,8 @@ async def on_message(message):
 
 
 @client.command(name="play", aliases=['p'])
-async def play(ctx, *url: str):
-    player = music.get_player(guild_id=ctx.guild.id)
-
+async def play(ctx: commands.Context, *search_query: str):
+    player = music.get_player(guild_id=ctx.guild.id) 
     if ctx.author.voice is None:
         await ctx.send("you are not in a voice channel")
     else:
@@ -49,26 +50,27 @@ async def play(ctx, *url: str):
 
         if not player:
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
-            await player.queue_song(url)
+            await player.queue_song(search_query)
             await player.play()
-        elif not ctx.voice_client.is_playing():
-            await player.queue_song(url)
+        elif not player.voice.is_playing():
+            await player.queue_song(search_query)
+            await player.play()
         else:
-            await player.queue_song(url)
-            await player.play()
+            await player.queue_song(search_query)
 
 
 @client.command(name="leave", aliases=['lv'])
-async def leave(ctx):
+async def leave(ctx:commands.Context):
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
     if voice.is_connected():
         await voice.disconnect()
     else:
         await ctx.send(embed=standard_embed(ctx, "The bot is not connected to a voice channel."))
 
+# TODO: clean up all player notifications and add them to player NotificationHub
 
 @client.command(name="pause", aliases=['ps'])
-async def pause(ctx):
+async def pause(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.pause()
     embed = discord.Embed(color=ctx.author.color, title=f"⏸ Paused {song.name}")
@@ -77,21 +79,21 @@ async def pause(ctx):
 
 
 @client.command(name="resume")
-async def resume(ctx):
+async def resume(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.resume()
     await ctx.send(embed=standard_embed(ctx, f"▶ Resumed {song.name}"))
 
 
 @client.command(name="stop")
-async def stop(ctx):
+async def stop(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     await player.stop()
     await ctx.send(embed=standard_embed(ctx, "🙉 PLAYBACK STOPPED 🙉"))
 
 
 @client.command(name="queue", aliases=['q'])
-async def queue(ctx):
+async def queue(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     queue_list = ""
     pos = 0
@@ -103,13 +105,13 @@ async def queue(ctx):
 
 
 @client.command(name="now playing", aliases=['np'])
-async def np(ctx):
+async def np(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     await player.now_playing()
 
 
 @client.command(name="skip", aliases=['sk'])
-async def skip(ctx):
+async def skip(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     data = await player.skip()
     await ctx.send(embed=standard_embed(ctx, f"🙉 Skipped {data[0].name} 🙉"))
@@ -123,7 +125,7 @@ async def remove(ctx, index):
 
 
 @client.command(name="loop", aliases=['lp'])
-async def loop(ctx):
+async def loop(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.toggle_song_loop()
     state = None
@@ -137,13 +139,13 @@ async def loop(ctx):
     await ctx.send(embed=embed)
 
 
-def standard_embed(ctx, title: str):
+def standard_embed(ctx: commands.Context, title: str):
     embed = discord.Embed(color=ctx.author.color, title=f"{title}")
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     return embed
 
 
-async def np_embed(ctx, song):
+async def np_embed(ctx: commands.Context, song):
     embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
                           description=f"[{song.name}]({song.url})")
     embed.set_thumbnail(url=song.thumbnail)
