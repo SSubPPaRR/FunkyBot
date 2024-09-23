@@ -1,3 +1,4 @@
+import os
 import re
 import aiohttp
 import discord
@@ -34,10 +35,12 @@ URL_REG = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-
 SPOTIFY = "^https?:\/\/(open\.spotify\.com\/track)\/(.*)$"
 SPOTIFY_PLAYLIST = "^https?:\/\/(open\.spotify\.com\/playlist)\/(.*)$"
 YOUTUBE_PLAYLIST = "^https?:\/\/(www.youtube.com|youtube.com)\/playlist(.*)$"
+SPOTIFY_ID = os.getenv('SPOTIFY_API_ID')
+SPOTIFY_KEY = os.getenv('SPOTIFY_API_KEY')
 
 spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
-    client_id="32c2e5a0ffb7427fa2e5107e87f839a9",
-    client_secret="0fbdb385fd954a0799691cdb502fda5d"
+    client_id=SPOTIFY_ID,
+    client_secret=SPOTIFY_KEY
 ))
 
 ydl = YoutubeDL(
