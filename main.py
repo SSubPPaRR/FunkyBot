@@ -1,14 +1,21 @@
-import os
+from concurrent.futures import thread
+from re import L
+from threading import Thread
+import threading
 import discord
 from discord.ext import commands
-import Music
+from MusicCog import Music, MusicPlayer
+import os
+from dotenv import load_dotenv
 
-intent = discord.Intents().all()
+import discord.ext 
 
-client = commands.Bot(command_prefix="funk_", intents=intent)
+myIntents= discord.Intents.default()
+myIntents.message_content = True;
 
-music = Music.Music()
+client = commands.Bot(command_prefix="funk_",intents=myIntents)
 
+music = Music()
 
 @client.event
 async def on_ready():
@@ -28,10 +35,8 @@ async def on_message(message):
 
 
 @client.command(name="play", aliases=['p'])
-async def play(ctx, *url: str):
-    # url = ''.join(url)
-    player = music.get_player()
-
+async def play(ctx: commands.Context, *search_query: str):
+    player = music.get_player(guild_id=ctx.guild.id) 
     if ctx.author.voice is None:
         await ctx.send("you are not in a voice channel")
     else:
@@ -45,45 +50,27 @@ async def play(ctx, *url: str):
 
         if not player:
             player = music.create_player(ctx, ffmpeg_error_betterfix=True)
-            player.on_play_func = np
-
-        if not len(url) == 0:
-            if not ctx.voice_client.is_playing():
-                await player.queue(url)
-                song = await player.play()
-
-                if not player.on_play_func:
-                    player.on_play(print(f"now playing"))
-                    await np_embed(ctx, song)
-
-            else:
-                song = await player.queue(url)
-                if len(song) == 1:
-                    song = song[0]
-                else:
-                    song = Music.Song(None, url, str(len(song)) + " tracks", None, None, None, None, None, None, False)
-
-                embed = discord.Embed(color=ctx.author.color, title="🐒 ADDED TO QUEUE 🐒",
-                                      description=f"[{song.name}]({song.url})")
-                embed.set_thumbnail(url=song.thumbnail)
-                embed.set_footer(text=f"requested by {ctx.author.display_name}")
-                await ctx.send(embed=embed)
+            await player.queue_song(search_query)
+            await player.play()
+        elif not player.voice.is_playing():
+            await player.queue_song(search_query)
+            await player.play()
         else:
-            # add message here
-            pass
+            await player.queue_song(search_query)
 
 
 @client.command(name="leave", aliases=['lv'])
-async def leave(ctx):
+async def leave(ctx:commands.Context):
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
     if voice.is_connected():
         await voice.disconnect(force=True)
     else:
         await ctx.send(embed=standard_embed(ctx, "The bot is not connected to a voice channel."))
 
+# TODO: clean up all player notifications and add them to player NotificationHub
 
 @client.command(name="pause", aliases=['ps'])
-async def pause(ctx):
+async def pause(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.pause()
     embed = discord.Embed(color=ctx.author.color, title=f"⏸ Paused {song.name}")
@@ -92,25 +79,25 @@ async def pause(ctx):
 
 
 @client.command(name="resume")
-async def resume(ctx):
+async def resume(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.resume()
     await ctx.send(embed=standard_embed(ctx, f"▶ Resumed {song.name}"))
 
 
 @client.command(name="stop")
-async def stop(ctx):
+async def stop(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     await player.stop()
     await ctx.send(embed=standard_embed(ctx, "🙉 PLAYBACK STOPPED 🙉"))
 
 
 @client.command(name="queue", aliases=['q'])
-async def queue(ctx):
+async def queue(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     queue_list = ""
     pos = 0
-    for song in player.current_queue():
+    for song in player.queue.tracks:
         queue_list += f"{pos})[{song.name}]({song.url})\n"
         pos += 1
     embed = discord.Embed(color=ctx.author.color, title="🌳 QUEUE 🌳", description=queue_list)
@@ -118,20 +105,15 @@ async def queue(ctx):
 
 
 @client.command(name="now playing", aliases=['np'])
-async def np(ctx):
+async def np(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
-    song = player.now_playing()
-    embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
-                          description=f"[{song.name}]({song.url})")
-    embed.set_thumbnail(url=song.thumbnail)
-    embed.set_footer(text=f"requested by {ctx.author.display_name}")
-    await ctx.send(embed=embed)
+    await player.now_playing()
 
 
 @client.command(name="skip", aliases=['sk'])
-async def skip(ctx):
+async def skip(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
-    data = await player.skip(force=True)
+    data = await player.skip()
     await ctx.send(embed=standard_embed(ctx, f"🙉 Skipped {data[0].name} 🙉"))
 
 
@@ -143,7 +125,7 @@ async def remove(ctx, index):
 
 
 @client.command(name="loop", aliases=['lp'])
-async def loop(ctx):
+async def loop(ctx:commands.Context):
     player = music.get_player(guild_id=ctx.guild.id)
     song = await player.toggle_song_loop()
     state = None
@@ -157,18 +139,19 @@ async def loop(ctx):
     await ctx.send(embed=embed)
 
 
-def standard_embed(ctx, title: str):
+def standard_embed(ctx: commands.Context, title: str):
     embed = discord.Embed(color=ctx.author.color, title=f"{title}")
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     return embed
 
 
-async def np_embed(ctx, song):
+async def np_embed(ctx: commands.Context, song):
     embed = discord.Embed(color=ctx.author.color, title="🪘 NOW PLAYING 🪘",
                           description=f"[{song.name}]({song.url})")
     embed.set_thumbnail(url=song.thumbnail)
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     await ctx.send(embed=embed)
 
-
-client.run(os.getenv('FUNKYKEY'))
+load_dotenv() 
+TOKEN = os.getenv('BOT_KEY')
+client.run(token=TOKEN)

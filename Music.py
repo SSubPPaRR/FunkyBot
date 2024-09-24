@@ -383,3 +383,4 @@ class Song(object):
         self.channel = channel
         self.channel_url = channel_url
         self.is_looping = loop
+
