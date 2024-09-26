@@ -5,3 +5,4 @@ PyNaCL
 discord.py[voice]
 ffmpeg
 yt_dlp
+dotenv
