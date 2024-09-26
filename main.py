@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from MusicCog import Music, MusicPlayer
 import os
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 import discord.ext 
 
@@ -152,6 +152,6 @@ async def np_embed(ctx: commands.Context, song):
     embed.set_footer(text=f"requested by {ctx.author.display_name}")
     await ctx.send(embed=embed)
 
-load_dotenv() 
+# load_dotenv() 
 TOKEN = os.getenv('BOT_KEY')
 client.run(token=TOKEN)
