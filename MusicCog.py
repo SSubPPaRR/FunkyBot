@@ -2,6 +2,7 @@ import os
 import re
 import aiohttp
 import discord
+from dotenv import load_dotenv
 import spotipy
 import asyncio
 
@@ -30,7 +31,7 @@ class PlayerAlreadyExist(Exception):
 class InvalidVolumeValue(Exception):
     """Invalid volume value was enter, value must be between 0-100"""
 
-
+load_dotenv() 
 URL_REG = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 SPOTIFY = "^https?:\/\/(open\.spotify\.com\/track)\/(.*)$"
 SPOTIFY_PLAYLIST = "^https?:\/\/(open\.spotify\.com\/playlist)\/(.*)$"
