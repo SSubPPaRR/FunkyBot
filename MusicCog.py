@@ -38,6 +38,8 @@ SPOTIFY_PLAYLIST = "^https?:\/\/(open\.spotify\.com\/playlist)\/(.*)$"
 YOUTUBE_PLAYLIST = "^https?:\/\/(www.youtube.com|youtube.com)\/playlist(.*)$"
 SPOTIFY_ID = os.getenv('SPOTIFY_API_ID')
 SPOTIFY_KEY = os.getenv('SPOTIFY_API_KEY')
+YT_USR = os.getenv('YT_USER')
+YT_PASS = os.getenv('YT_PASSWORD')
 
 spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
     client_id=SPOTIFY_ID,
@@ -46,7 +48,8 @@ spotify = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
 
 ydl = YoutubeDL(
     {"format": "bestaudio/best", "restrictfilenames": True, "noplaylist": False, "nocheckcertificate": True,
-     "ignoreerrors": True, "logtostderr": False, "quiet": True, "no_warnings": True, "source_address": "0.0.0.0"})
+     "ignoreerrors": True, "logtostderr": False, "quiet": True, "no_warnings": True, "source_address": "0.0.0.0",
+     "username": YT_USR, "password":YT_PASS, "verbose": True})
 
 
 def is_url(url):
